@@ -1,14 +1,15 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status, permissions, generics, mixins
+from book.models import Library
+from rest_framework import generics, mixins, permissions, status
 from rest_framework.exceptions import NotFound
 from rest_framework.filters import SearchFilter
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
-from book.models import Library
+from django.core.mail import send_mail
 from .serializers import *
-
-
+from django.conf import settings
 #Libreria (ABM)
+
 
 class LibraryDetail(mixins.RetrieveModelMixin,
                     mixins.UpdateModelMixin,
@@ -99,10 +100,31 @@ class AuthorDetail(mixins.RetrieveModelMixin,
 
 # Leads
 
+
+def email_client(request):
+    if request.method == 'POST':
+        fullname = request.POST['fullname']
+        email = request.POST['email']
+        phone = request.POST['phone']
+        library = request.POST['library']
+        message = 'Datos: Fullname: %s, Email: %s, Phone: %s, Library: %s' % (
+            fullname, email, phone, library)
+
+        # send email - params: subject, message, from email, to email
+        return send_mail(
+            'Nuevo lead registrado',
+            message,
+            email,
+            [settings.EMAIL_HOST_USER],
+            fail_silently=False
+        )
+
+
 class LeadCreate(mixins.CreateModelMixin,
                  generics.GenericAPIView):
     queryset = Leads.objects.all()
     serializer_class = LeadsSerializer
 
     def post(self, request, *args, **kwargs):
+        email_client(request)
         return self.create(request, *args, **kwargs)
